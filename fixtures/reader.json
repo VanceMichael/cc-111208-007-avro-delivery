@@ -1,0 +1,1 @@
+{"type": "record", "name": "Scan", "fields": [{"name": "eventId", "type": "string"}, {"name": "timestamp", "type": "long"}, {"name": "delivered", "type": "boolean"}]}
