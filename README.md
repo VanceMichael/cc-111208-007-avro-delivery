@@ -1,6 +1,6 @@
 # deliveryocf
 
-配送扫描 Avro OCF 文件头与元数据查看器。
+配送扫描 Avro OCF 文件头诊断与逐块接收工具。
 
 ## 本地运行
 
@@ -14,7 +14,9 @@ python -m unittest discover -s tests -v
 python -m scripts.demo
 ```
 
-检查命令输出单份来源的结构摘要。`capture URL --method GET --state var` 仅接受 loopback HTTP，保存原始响应为 SHA256 文件，并在 SQLite captures 表登记；可用 `--header 'Name:Value'` 传头、`--body FILE` 传正文，不跟随重定向。检查器不执行多页、业务去重或正式接收。当前命令不包含待开发的 ingest 业务流程；新增能力与现有摘要工具的边界见 docs/acceptance.md。
+`header` 命令输出单份来源的结构摘要，保持独立诊断用途。`capture URL --method GET --state var` 仅接受 loopback HTTP，保存原始响应为 SHA256 文件，并在 SQLite captures 表登记；可用 `--header 'Name:Value'` 传头、`--body FILE` 传正文，不跟随重定向。
+
+`ingest FILE --state DIR --reader READER.json` 是新增的逐块接收：按 docs/source-contract.md 的子集核对每个完整块的记录数、压缩负载与尾部 sync 后，在单个 SQLite 事务里同时提交业务记录与块偏移检查点；尾块不足时等待，源被替换或已提交前缀被修改时隔离（退出码 3），不沿用旧偏移。限额 `--max-block-bytes`（解压后）、`--max-record-bytes`、`--max-array-elements` 分别配置。同 eventId 同规范内容去重，同 id 异值阻塞整块并留存冲突。`scans --state DIR` 把已接收扫描、阻塞块、原文偏移、writer schema 指纹与来源身份关联输出。接收流程的验收边界见 docs/acceptance.md。
 
 ## 可复现容器
 
@@ -24,7 +26,7 @@ docker run --rm --network none deliveryocf:local python -m unittest discover -s 
 docker run --rm --network none deliveryocf:local
 ```
 
-镜像固定基础摘要。构建在正式运行前完成；运行和测试不安装包、不下载数据。演示命令实际执行检查器及本地来源，通常不超过 5 秒；它不是新增业务接收已实现的声明。开发完成后扩展 scripts/demo.py 展示一个真实业务闭环，完整输出并控制在 90 秒以内。
+镜像固定基础摘要。构建在正式运行前完成；运行和测试不安装包、不下载数据。演示命令先执行原有检查器，再用本地合成文件演示接收闭环：前两块到齐、末块缺尾时等待，补齐后第二次运行只新增第三块，全程不超过 90 秒。
 
 ## 协议与来源
 
